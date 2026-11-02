@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: SIA-UGN API
+  description: API Backend Sistem Informasi Akademik Universitas Global Nusantara
+  version: 1.0.0
+servers:
+  - url: https://api.ugn.ac.id/api/v1
+    description: Production Server
+  - url: http://localhost:8000/api/v1
+    description: Local Development Server
+paths:
+  /auth/login:
+    post:
+      summary: User Login
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful

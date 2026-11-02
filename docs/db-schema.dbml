@@ -1,0 +1,373 @@
+// ============================================================
+// ERD - Modul Dosen - Sistem Informasi Akademik UGN
+// Generated from: fitur_dosen.md  |  Rev: 2026-03-06
+// Target: dbdiagram.io
+// ============================================================
+
+// ============================================================
+// TABEL REFERENSI (sudah ada di sistem)
+// ============================================================
+
+Table users_si {
+  id_user_si         bigint       [pk, increment]
+  name               varchar(255)
+  username           varchar(255) [unique]
+  email              varchar(255) [unique]
+  email_verified_at  timestamp    [null]
+  password           varchar(255)
+  id_program         bigint       [null, ref: > programs.id_program]
+  role               enum('mahasiswa','dosen','admin','manager') [default: 'mahasiswa']
+  is_active          boolean      [default: true]
+  profile_photo_path varchar(255) [null]
+  remember_token     varchar(100) [null]
+  created_at         timestamp    [null]
+  updated_at         timestamp    [null]
+}
+
+Table programs {
+  id_program  bigint       [pk, increment]
+  name        varchar(255)
+  created_at  timestamp    [null]
+  updated_at  timestamp    [null]
+}
+
+Table staff_profiles {
+  id_staff_profile   bigint       [pk, increment]
+  id_user_si         bigint       [unique, ref: - users_si.id_user_si]
+  full_name          varchar(255)
+  employee_id_number varchar(50)  [unique, note: 'NIP / NIDN']
+  position           varchar(100) [null, note: 'Jabatan struktural']
+  created_at         timestamp    [null]
+  updated_at         timestamp    [null]
+}
+
+Table academic_periods {
+  id          bigint      [pk, increment]
+  name        varchar(255)
+  year        varchar(9)  [note: 'Contoh: 2025/2026']
+  semester    enum('ganjil','genap')
+  start_date  date
+  end_date    date
+  is_active   boolean     [default: false]
+  created_at  timestamp   [null]
+  updated_at  timestamp   [null]
+}
+
+Table subjects {
+  id_subject  bigint      [pk, increment]
+  code        varchar(20)
+  name        varchar(255)
+  credits     tinyint     [note: 'SKS']
+  id_program  bigint      [ref: > programs.id_program]
+  created_at  timestamp   [null]
+  updated_at  timestamp   [null]
+}
+
+Table classes {
+  id_class          bigint      [pk, increment]
+  id_subject        bigint      [ref: > subjects.id_subject]
+  id_academic_period bigint     [ref: > academic_periods.id]
+  code_class        varchar(10)
+  member_class      int
+  day_of_week       int         [note: '1=Senin ... 7=Minggu']
+  start_time        time
+  end_time          time
+  is_active         boolean     [default: false]
+  created_at        timestamp   [null]
+  updated_at        timestamp   [null]
+}
+
+Table schedules {
+  id_schedule  bigint  [pk, increment]
+  id_class     bigint  [ref: > classes.id_class]
+  date         date
+  created_at   timestamp [null]
+  updated_at   timestamp [null]
+}
+
+// ============================================================
+// C.1 MODUL PRESENSI DOSEN
+// ============================================================
+
+Table campus_settings {
+  id_setting     bigint        [pk, increment]
+  nama_kampus    varchar(255)  [note: 'Label lokasi kampus']
+  latitude       decimal(10,8) [note: 'Titik pusat GPS kampus']
+  longitude      decimal(11,8) [note: 'Titik pusat GPS kampus']
+  radius_meter   int           [note: 'Radius validasi dalam meter']
+  is_active      boolean       [default: true]
+  created_at     timestamp     [null]
+  updated_at     timestamp     [null]
+
+  Note: 'C.1 - Acuan koordinat dan radius kampus untuk verifikasi GPS'
+}
+
+Table presensi_dosen {
+  id                   bigint        [pk, increment]
+  id_user_si           bigint        [ref: > users_si.id_user_si, note: 'Dosen yang absen']
+  id_schedule          bigint        [null, ref: > schedules.id_schedule, note: 'Jadwal perkuliahan terkait']
+  id_academic_period   bigint        [ref: > academic_periods.id]
+  id_setting           bigint        [null, ref: > campus_settings.id_setting, note: 'Setting kampus acuan GPS']
+  tanggal              date
+  jam_masuk            time          [null]
+  jam_keluar           time          [null]
+  latitude             decimal(10,8) [null, note: 'Koordinat GPS saat check-in']
+  longitude            decimal(11,8) [null, note: 'Koordinat GPS saat check-in']
+  is_dalam_radius      boolean       [default: false, note: 'Hasil validasi lokasi terhadap campus_settings']
+  status               enum('hadir','izin','sakit','alpha') [default: 'hadir']
+  keterangan           text          [null]
+  is_validated         boolean       [default: false, note: 'Manager telah memvalidasi presensi ini']
+  id_manager_validator bigint        [null, ref: > users_si.id_user_si, note: 'Manager yang memvalidasi (role=manager)']
+  validated_at         timestamp     [null]
+  created_at           timestamp     [null]
+  updated_at           timestamp     [null]
+
+  Note: 'C.1 - Presensi harian dosen dengan verifikasi GPS & validasi manager'
+}
+
+Table rekap_presensi_dosen {
+  id                 bigint    [pk, increment]
+  id_user_si         bigint    [ref: > users_si.id_user_si]
+  id_academic_period bigint    [ref: > academic_periods.id]
+  bulan              tinyint   [note: '1-12']
+  tahun              smallint
+  total_hadir        int       [default: 0]
+  total_izin         int       [default: 0]
+  total_sakit        int       [default: 0]
+  total_alpha        int       [default: 0]
+  total_hari_kerja   int       [default: 0]
+  created_at         timestamp [null]
+  updated_at         timestamp [null]
+
+  Note: 'C.1 - Rekap bulanan/semesteran kehadiran dosen (sumber kalkulasi potongan gaji)'
+}
+
+// ============================================================
+// C.3.3 KEGIATAN PENGAJAR
+// ============================================================
+
+Table kegiatan_mengajar {
+  id                 bigint       [pk, increment]
+  id_user_si         bigint       [ref: > users_si.id_user_si, note: 'Dosen pengampu']
+  id_subject         bigint       [ref: > subjects.id_subject]
+  id_academic_period bigint       [ref: > academic_periods.id]
+  id_class           bigint       [null, ref: > classes.id_class, note: 'Kelas yang diampu']
+  kelas              varchar(20)  [note: 'Kode kelas: A, B, reguler pagi']
+  jumlah_sks         tinyint
+  total_pertemuan    int          [default: 0, note: 'Jumlah pertemuan terlaksana']
+  ak_earned          decimal(5,2) [default: 0.00, note: 'AK otomatis dihitung dari jumlah SKS (C.3.3 -> C.2)']
+  created_at         timestamp    [null]
+  updated_at         timestamp    [null]
+
+  Note: 'C.3.3 - Rekam jejak mata kuliah yang diampu per semester'
+}
+
+// ============================================================
+// C.3.1 PENELITIAN ILMIAH
+// ============================================================
+
+Table penelitian {
+  id                 bigint        [pk, increment]
+  id_user_si         bigint        [ref: > users_si.id_user_si, note: 'Dosen ketua peneliti']
+  id_academic_period bigint        [ref: > academic_periods.id]
+  judul              varchar(500)
+  abstrak            text          [null]
+  bidang_ilmu        varchar(255)  [null]
+  sumber_dana        varchar(255)  [null, note: 'Mandiri / DIKTI / Hibah dll']
+  jumlah_dana        decimal(15,2) [null]
+  tahun_pelaksanaan  year
+  status             enum('pengajuan','aktif','selesai','dipublikasikan') [default: 'pengajuan']
+  ak_earned          decimal(5,2)  [default: 0.00, note: 'AK otomatis saat status disetujui (C.3.1 -> C.2)']
+  catatan_manager    text          [null]
+  id_manager_validator bigint      [null, ref: > users_si.id_user_si, note: 'Manager yang menyetujui (role=manager)']
+  is_validated       boolean       [default: false]
+  validated_at       timestamp     [null]
+  created_at         timestamp     [null]
+  updated_at         timestamp     [null]
+
+  Note: 'C.3.1 - Data penelitian ilmiah dosen'
+}
+
+Table penelitian_anggota {
+  id            bigint  [pk, increment]
+  id_penelitian bigint  [ref: > penelitian.id]
+  id_user_si    bigint  [ref: > users_si.id_user_si]
+  peran         enum('ketua','anggota') [default: 'anggota']
+  created_at    timestamp [null]
+  updated_at    timestamp [null]
+
+  Note: 'C.3.1 - Anggota tim penelitian (many-to-many dosen <-> penelitian)'
+}
+
+Table penelitian_dokumen {
+  id            bigint       [pk, increment]
+  id_penelitian bigint       [ref: > penelitian.id]
+  jenis         enum('proposal','laporan_akhir','publikasi','lainnya')
+  nama_file     varchar(255)
+  path          varchar(500) [note: 'Path file PDF di storage']
+  ukuran_file   int          [null, note: 'Ukuran file dalam bytes']
+  uploaded_at   timestamp    [null]
+  created_at    timestamp    [null]
+  updated_at    timestamp    [null]
+
+  Note: 'C.3.1 - Upload proposal & laporan akhir penelitian'
+}
+
+// ============================================================
+// C.3.2 PENGABDIAN MASYARAKAT
+// ============================================================
+
+Table pengabdian_masyarakat {
+  id                   bigint       [pk, increment]
+  id_user_si           bigint       [ref: > users_si.id_user_si, note: 'Dosen ketua PKM']
+  id_academic_period   bigint       [ref: > academic_periods.id]
+  judul                varchar(500)
+  lokasi               varchar(255)
+  mitra                varchar(255) [null, note: 'Mitra/institusi mitra']
+  tanggal_pelaksanaan  date
+  jumlah_peserta       int          [null]
+  status               enum('pengajuan','aktif','selesai') [default: 'pengajuan']
+  ak_earned            decimal(5,2) [default: 0.00, note: 'AK otomatis saat disetujui (C.3.2 -> C.2)']
+  catatan_manager      text         [null]
+  id_manager_validator bigint       [null, ref: > users_si.id_user_si, note: 'Manager yang menyetujui (role=manager)']
+  is_validated         boolean      [default: false]
+  validated_at         timestamp    [null]
+  created_at           timestamp    [null]
+  updated_at           timestamp    [null]
+
+  Note: 'C.3.2 - Data kegiatan pengabdian masyarakat (PKM)'
+}
+
+Table pengabdian_dokumen {
+  id              bigint       [pk, increment]
+  id_pengabdian   bigint       [ref: > pengabdian_masyarakat.id]
+  jenis           enum('laporan','foto_dokumentasi','surat_tugas','lainnya')
+  nama_file       varchar(255)
+  path            varchar(500)
+  ukuran_file     int          [null]
+  uploaded_at     timestamp    [null]
+  created_at      timestamp    [null]
+  updated_at      timestamp    [null]
+
+  Note: 'C.3.2 - Upload laporan akhir & foto dokumentasi PKM'
+}
+
+// ============================================================
+// C.2 MODUL ANGKA KREDIT (BKD)
+// ============================================================
+
+Table bkd {
+  id                   bigint       [pk, increment]
+  id_user_si           bigint       [ref: > users_si.id_user_si, note: 'Dosen pemilik BKD']
+  id_academic_period   bigint       [ref: > academic_periods.id]
+  status               enum('draft','diajukan','disetujui','ditolak') [default: 'draft']
+  ak_pendidikan        decimal(7,2) [default: 0.00, note: 'Sum ak_earned dari kegiatan_mengajar']
+  ak_penelitian        decimal(7,2) [default: 0.00, note: 'Sum ak_earned dari penelitian']
+  ak_pengabdian        decimal(7,2) [default: 0.00, note: 'Sum ak_earned dari pengabdian_masyarakat']
+  ak_penunjang         decimal(7,2) [default: 0.00, note: 'AK kegiatan penunjang (input manual)']
+  total_ak             decimal(7,2) [default: 0.00, note: 'Total AK otomatis = sum semua komponen']
+  catatan_dosen        text         [null]
+  catatan_manager      text         [null]
+  is_validated         boolean      [default: false, note: 'Manager telah memvalidasi BKD ini']
+  id_manager_validator bigint       [null, ref: > users_si.id_user_si, note: 'Manager yang memvalidasi (role=manager)']
+  validated_at         timestamp    [null]
+  submitted_at         timestamp    [null]
+  created_at           timestamp    [null]
+  updated_at           timestamp    [null]
+
+  Note: 'C.2 - Beban Kerja Dosen per semester (form input BKD + kalkulasi AK otomatis)'
+}
+
+Table angka_kredit_dosen {
+  id                 bigint        [pk, increment]
+  id_user_si         bigint        [ref: - users_si.id_user_si, note: 'One-to-one dengan dosen']
+  jabatan_fungsional varchar(100)  [note: 'Asisten Ahli | Lektor | Lektor Kepala | Guru Besar']
+  golongan           varchar(10)   [null]
+  total_ak_kumulatif decimal(8,2)  [default: 0.00, note: 'Akumulasi total AK sepanjang karir']
+  ak_untuk_naik      decimal(7,2)  [null, note: 'Threshold AK yang dibutuhkan untuk naik jabatan']
+  notifikasi_dikirim boolean       [default: false, note: 'Flag notifikasi kenaikan jabatan sudah dikirim']
+  created_at         timestamp     [null]
+  updated_at         timestamp     [null]
+
+  Note: 'C.2 - Rekap angka kredit kumulatif & trigger notifikasi kenaikan jabatan'
+}
+
+Table kenaikan_jabatan {
+  id                   bigint       [pk, increment]
+  id_user_si           bigint       [ref: > users_si.id_user_si, note: 'Dosen pengaju']
+  id_bkd               bigint       [null, ref: > bkd.id, note: 'BKD semester terakhir sebagai lampiran']
+  jabatan_asal         varchar(100)
+  jabatan_tujuan       varchar(100)
+  total_ak_diajukan    decimal(7,2)
+  status               enum('diajukan','diproses','disetujui','ditolak') [default: 'diajukan']
+  catatan_manager      text         [null]
+  id_manager_validator bigint       [null, ref: > users_si.id_user_si, note: 'Manager yang memvalidasi (role=manager)']
+  is_validated         boolean      [default: false]
+  validated_at         timestamp    [null]
+  created_at           timestamp    [null]
+  updated_at           timestamp    [null]
+
+  Note: 'C.2 - Pengajuan kenaikan jabatan akademik dosen'
+}
+
+Table pak_dokumen {
+  id                  bigint       [pk, increment]
+  id_kenaikan_jabatan bigint       [ref: - kenaikan_jabatan.id]
+  id_user_si          bigint       [ref: > users_si.id_user_si]
+  nomor_pak           varchar(100) [null, note: 'Nomor SK Penetapan Angka Kredit']
+  tanggal_pak         date         [null]
+  path_dokumen        varchar(500) [null, note: 'Path file PDF PAK resmi hasil cetak']
+  generated_at        timestamp    [null]
+  created_at          timestamp    [null]
+  updated_at          timestamp    [null]
+
+  Note: 'C.2 - Cetak dokumen PAK resmi setelah kenaikan jabatan disetujui'
+}
+
+// ============================================================
+// C.4 MODUL GAJI
+// ============================================================
+
+Table gaji {
+  id                bigint        [pk, increment]
+  id_user_si        bigint        [ref: > users_si.id_user_si]
+  id_rekap_presensi bigint        [null, ref: > rekap_presensi_dosen.id, note: 'Sumber data potongan presensi (C.1 -> C.4)']
+  bulan             tinyint       [note: '1-12']
+  tahun             smallint
+  potongan_presensi decimal(12,2) [default: 0.00, note: 'Otomatis dari total_alpha di rekap_presensi_dosen']
+  total_penghasilan decimal(12,2) [default: 0.00, note: 'Sum nominal dari gaji_komponen WHERE jenis=penghasilan']
+  total_potongan    decimal(12,2) [default: 0.00, note: 'Sum nominal dari gaji_komponen WHERE jenis=potongan + potongan_presensi']
+  gaji_bersih       decimal(12,2) [default: 0.00, note: 'total_penghasilan - total_potongan']
+  status            enum('draft','final') [default: 'draft']
+  path_slip_pdf     varchar(500)  [null, note: 'Path file PDF slip gaji untuk diunduh']
+  generated_at      timestamp     [null]
+  created_at        timestamp     [null]
+  updated_at        timestamp     [null]
+
+  Note: 'C.4 - Header slip gaji bulanan dosen (komponen dinamis di gaji_komponen)'
+}
+
+Table gaji_komponen {
+  id             bigint        [pk, increment]
+  id_gaji        bigint        [ref: > gaji.id]
+  jenis          enum('penghasilan','potongan') [note: 'Klasifikasi komponen']
+  nama_komponen  varchar(100)  [note: 'Gaji Pokok | Tunjangan Jabatan | Tunjangan Fungsional | Tunjangan Kinerja | Uang Makan | BPJS | dll']
+  nominal        decimal(12,2) [default: 0.00]
+  urutan         tinyint       [null, note: 'Urutan tampil di slip gaji']
+  created_at     timestamp     [null]
+  updated_at     timestamp     [null]
+
+  Note: 'C.4 - Detail komponen gaji dinamis (penghasilan & potongan) agar tidak hardcoded'
+}
+
+// ============================================================
+// RINGKASAN INTEGRASI ANTAR MODUL
+// ============================================================
+// [C.1 -> C.4] rekap_presensi_dosen.total_alpha  =>  gaji.potongan_presensi
+// [C.3.3 -> C.2] kegiatan_mengajar.ak_earned     =>  bkd.ak_pendidikan
+// [C.3.1 -> C.2] penelitian.ak_earned            =>  bkd.ak_penelitian
+// [C.3.2 -> C.2] pengabdian_masyarakat.ak_earned =>  bkd.ak_pengabdian
+// [C.2 -> C.2]   bkd.total_ak                    =>  angka_kredit_dosen.total_ak_kumulatif
+// [C.2 notif]    angka_kredit_dosen.total_ak_kumulatif >= ak_untuk_naik  =>  push notifikasi kenaikan jabatan
+// [C.2 -> C.2]   angka_kredit_dosen              =>  kenaikan_jabatan (dosen mengajukan)
+// [C.2 -> C.2]   kenaikan_jabatan (disetujui)    =>  pak_dokumen (cetak PAK)
