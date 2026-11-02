@@ -57,7 +57,7 @@ flowchart TD
 | **Authentication** | Laravel Sanctum | Stateful / Bearer Token authentication dengan isolasi hak akses peran |
 | **Geofencing & Math**| Haversine Formula | Algoritma spherical geometry untuk verifikasi radius jarak dosen ke kampus |
 | **Notifications** | Firebase Cloud Messaging (FCM) | Notifikasi push pengumuman dan update status validasi berkas |
-| **Container & Cloud**| Docker & Railway | Containerized deployment environment dengan `Dockerfile.railway` & `docker-compose` |
+| **Container & CI/CD**| Docker, GHCR, & Railway | Pipeline otomatisasi build image ke GitHub Container Registry ([`docs/cicd-pipeline.md`](docs/cicd-pipeline.md)) |
 | **Testing Suite** | Postman Newman CLI & k6 | 51 endpoint teruji dan stress testing konkurensi check-in presensi |
 
 ---
@@ -165,24 +165,26 @@ Accept: application/json
 SIA-UGN-BE/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                 # Pipeline CI GitHub Actions
+│       ├── ci.yml                             # Pipeline CI validasi sintaks JSON
+│       └── docker-build-push.example.yml      # Pipeline CI/CD Docker build & push ke GHCR
 ├── docs/
-│   ├── architecture.md            # Dokumentasi arsitektur, geofencing, & RBAC
-│   ├── db-schema.dbml             # Skema ERD PostgreSQL / MySQL (DBML)
-│   └── sequence-diagram.md        # Diagram alur presensi GPS & validasi BKD
+│   ├── architecture.md                        # Dokumentasi arsitektur, geofencing, & RBAC
+│   ├── cicd-pipeline.md                       # Dokumentasi arsitektur CI/CD & efisiensi build
+│   ├── db-schema.dbml                         # Skema ERD PostgreSQL / MySQL (DBML)
+│   └── sequence-diagram.md                    # Diagram alur presensi GPS & validasi BKD
 ├── api/
-│   ├── openapi.json               # OpenAPI 3.1.0 specification
-│   └── postman_collection.json    # Master Postman Collection (51 Endpoints, 7 Modul)
+│   ├── openapi.json                           # OpenAPI 3.1.0 specification
+│   └── postman_collection.json                # Master Postman Collection (51 Endpoints, 7 Modul)
 ├── tests/
 │   ├── integration/
-│   │   └── README.md              # Dokumentasi pengujian integrasi
+│   │   └── README.md                          # Dokumentasi pengujian integrasi
 │   └── load-test/
-│       └── k6-script.js           # Skrip pengujian beban k6 untuk presensi GPS
+│       └── k6-script.js                       # Skrip pengujian beban k6 untuk presensi GPS
 ├── snippets/
-│   ├── GpsService.php             # Showcase implementasi Haversine Geofencing
-│   └── PayrollSyncService.php     # Showcase integrasi presensi ke penggajian
+│   ├── GpsService.php                         # Showcase implementasi Haversine Geofencing
+│   └── PayrollSyncService.php                 # Showcase integrasi presensi ke penggajian
 ├── .gitignore
-└── README.md                      # Dokumentasi komprehensif portofolio
+└── README.md                                  # Dokumentasi komprehensif portofolio
 ```
 
 ---
